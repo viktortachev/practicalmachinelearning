@@ -1,39 +1,182 @@
+> #Under each and every passage of code, I will explain what approach had I chosen for the performance of the analysis. First, I started with an analysis over the provided data. With this step, I would determine the activity of the different individuals.To make that happen, I used the packages "caret" and "randomForest". This way I was able to calculate the separate answers of each one of the 20 test data cases provided. 
+> 
+> library(Hmisc)
+Loading required package: grid
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+Loading required package: ggplot2
+Need help? Try the ggplot2 mailing list: http://groups.google.com/group/ggplot2.
 
-library(Hmisc)
-library(caret)
-library(randomForest)
-library(foreach)
-library(doParallel)
+Attaching package: ‘Hmisc’
 
-set.seed(2048)
-options(warn=-1)
+The following objects are masked from ‘package:base’:
 
-setwd(“D:\viktor\uni\practical machine learning”)
+    format.pval, round.POSIXt, trunc.POSIXt, units
 
-training_data <- read.csv(“pml-training.csv”, na.strings=c(“#DIV/0!”) ) 
-evaluation_data <- read.csv(“pml-testing.csv”, na.strings=c(“#DIV/0!”) )
+> library(caret)
 
-for(i in c(8:ncol(training_data)-1)) {training_data[,i] = as.numeric(as.character(training_data[,i]))} 
-for(i in c(8:ncol(evaluation_data)-1)) {evaluation_data[,i] = as.numeric(as.character(evaluation_data[,i]))}
+Attaching package: ‘caret’
 
-feature_set <- colnames(training_data[colSums(is.na(training_data)) == 0])[-(1:7)] 
-model_data <- training_data[feature_set] feature_set
+The following object is masked from ‘package:survival’:
 
-idx <- createDataPartition(y=model_data$classe, p=0.75, list=FALSE ) 
-training <- model_data[idx,] testing <- model_data[-idx,]
+    cluster
 
-registerDoParallel() x <- training[-ncol(training)] y <- training$classe
+> library(randomForest)
+randomForest 4.6-12
+Type rfNews() to see new features/changes/bug fixes.
 
-rf <- foreach(ntree=rep(300, 6), .combine=randomForest::combine, .packages=‘randomForest’) %dopar% { randomForest(x, y, ntree=ntree) }
+Attaching package: ‘randomForest’
 
-predictions1 <- predict(rf, newdata=training) confusionMatrix(predictions1,training$classe)
+The following object is masked from ‘package:Hmisc’:
 
-predictions2 <- predict(rf, newdata=testing) confusionMatrix(predictions2,testing$classe)
+    combine
 
-pml_write_files = function(x){ n = length(x) for(i in 1:n){ filename = paste0(“problem_id_”,i,“.txt”) write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE) } }
+> library(foreach)
+foreach: simple, scalable parallel programming from Revolution Analytics
+Use Revolution R for scalability, fault tolerance and more.
+http://www.revolutionanalytics.com
+> library(doParallel)
+Loading required package: iterators
+Loading required package: parallel
+> set.seed(2048)
+> options(warn=-1)
+> 
+> setwd("D:\\viktor\\uni\\practical machine learning")
+> 
+> #I started with the process of loading the training and testingdata from the csv's, provided on the Assignment page.
+> 
+> training_data <- read.csv("pml-training.csv", na.strings=c("#DIV/0!") )
+> evaluation_data <- read.csv("pml-testing.csv", na.strings=c("#DIV/0!") )
+> 
+> #An important step was to set all columns in the data sets (8) to be numeric.
+> 
+> for(i in c(8:ncol(training_data)-1)) {training_data[,i] = as.numeric(as.character(training_data[,i]))}
+> for(i in c(8:ncol(evaluation_data)-1)) {evaluation_data[,i] = as.numeric(as.character(evaluation_data[,i]))}
+> 
+> #As it was stated in the video lectures, if there are blank colums, then this can have a negative impact on the prediction results. That is why I included only complete columns. It is not necessary to remove inputs such as user name, windows and etc, but I preffered to do it.
+> 
+> feature_set <- colnames(training_data[colSums(is.na(training_data)) == 0])[-(1:7)]
+> model_data <- training_data[feature_set]
+> feature_set
+ [1] "roll_belt"            "pitch_belt"           "yaw_belt"             "total_accel_belt"    
+ [5] "gyros_belt_x"         "gyros_belt_y"         "gyros_belt_z"         "accel_belt_x"        
+ [9] "accel_belt_y"         "accel_belt_z"         "magnet_belt_x"        "magnet_belt_y"       
+[13] "magnet_belt_z"        "roll_arm"             "pitch_arm"            "yaw_arm"             
+[17] "total_accel_arm"      "gyros_arm_x"          "gyros_arm_y"          "gyros_arm_z"         
+[21] "accel_arm_x"          "accel_arm_y"          "accel_arm_z"          "magnet_arm_x"        
+[25] "magnet_arm_y"         "magnet_arm_z"         "roll_dumbbell"        "pitch_dumbbell"      
+[29] "yaw_dumbbell"         "total_accel_dumbbell" "gyros_dumbbell_x"     "gyros_dumbbell_y"    
+[33] "gyros_dumbbell_z"     "accel_dumbbell_x"     "accel_dumbbell_y"     "accel_dumbbell_z"    
+[37] "magnet_dumbbell_x"    "magnet_dumbbell_y"    "magnet_dumbbell_z"    "roll_forearm"        
+[41] "pitch_forearm"        "yaw_forearm"          "total_accel_forearm"  "gyros_forearm_x"     
+[45] "gyros_forearm_y"      "gyros_forearm_z"      "accel_forearm_x"      "accel_forearm_y"     
+[49] "accel_forearm_z"      "magnet_forearm_x"     "magnet_forearm_y"     "magnet_forearm_z"    
+[53] "classe"              
+> 
+> idx <- createDataPartition(y=model_data$classe, p=0.75, list=FALSE )
+> training <- model_data[idx,]
+> testing <- model_data[-idx,]
+> 
+> #The next step is to build different random forest scenarios. What I did is to perform 5 random forests with 300 trees each. NOTE that the more trees you construct, the more accurate results you get. I decided to construct 300 trees before of the processing time that is needed for broader analysis. Nevertheless, the results I got are completely accurate and clearly show how effective the predictive model is.
+> 
+> registerDoParallel()
+> x <- training[-ncol(training)]
+> y <- training$classe
+> 
+> rf <- foreach(ntree=rep(300, 6), .combine=randomForest::combine, .packages='randomForest') %dopar% {
++   randomForest(x, y, ntree=ntree) 
++ }
+> 
+> #Finally, I generate reports for the training and the test data via the "classe" variable.
+> 
+> predictions1 <- predict(rf, newdata=training)
+> confusionMatrix(predictions1,training$classe)
+Confusion Matrix and Statistics
 
-x <- evaluation_data x <- x[feature_set[feature_set!=‘classe’]] answers <- predict(rf, newdata=x)
+          Reference
+Prediction    A    B    C    D    E
+         A 4185    0    0    0    0
+         B    0 2848    0    0    0
+         C    0    0 2567    0    0
+         D    0    0    0 2412    0
+         E    0    0    0    0 2706
 
-answers
+Overall Statistics
+                                     
+               Accuracy : 1          
+                 95% CI : (0.9997, 1)
+    No Information Rate : 0.2843     
+    P-Value [Acc > NIR] : < 2.2e-16  
+                                     
+                  Kappa : 1          
+ Mcnemar's Test P-Value : NA         
 
-pml_write_files(answers)
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   1.0000   1.0000   1.0000   1.0000
+Specificity            1.0000   1.0000   1.0000   1.0000   1.0000
+Pos Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+Neg Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+Prevalence             0.2843   0.1935   0.1744   0.1639   0.1839
+Detection Rate         0.2843   0.1935   0.1744   0.1639   0.1839
+Detection Prevalence   0.2843   0.1935   0.1744   0.1639   0.1839
+Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000
+> 
+> predictions2 <- predict(rf, newdata=testing)
+> confusionMatrix(predictions2,testing$classe)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    A    B    C    D    E
+         A 1395    5    0    0    0
+         B    0  941    5    0    0
+         C    0    3  849    8    2
+         D    0    0    1  796    2
+         E    0    0    0    0  897
+
+Overall Statistics
+                                          
+               Accuracy : 0.9947          
+                 95% CI : (0.9922, 0.9965)
+    No Information Rate : 0.2845          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.9933          
+ Mcnemar's Test P-Value : NA              
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   0.9916   0.9930   0.9900   0.9956
+Specificity            0.9986   0.9987   0.9968   0.9993   1.0000
+Pos Pred Value         0.9964   0.9947   0.9849   0.9962   1.0000
+Neg Pred Value         1.0000   0.9980   0.9985   0.9981   0.9990
+Prevalence             0.2845   0.1935   0.1743   0.1639   0.1837
+Detection Rate         0.2845   0.1919   0.1731   0.1623   0.1829
+Detection Prevalence   0.2855   0.1929   0.1758   0.1629   0.1829
+Balanced Accuracy      0.9993   0.9952   0.9949   0.9947   0.9978
+> 
+> #Conclusion:
+> #The RandomForest model is the most complete model that I had tested over this case. As it can be clearly seen, the test results are correct and expose the accurate construction of the model.
+> 
+> pml_write_files = function(x){
++   n = length(x)
++   for(i in 1:n){
++     filename = paste0("problem_id_",i,".txt")
++     write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
++   }
++ }
+> 
+> 
+> x <- evaluation_data
+> x <- x[feature_set[feature_set!='classe']]
+> answers <- predict(rf, newdata=x)
+> 
+> answers
+ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+ B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+Levels: A B C D E
+> 
+> pml_write_files(answers)
