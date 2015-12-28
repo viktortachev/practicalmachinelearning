@@ -1,31 +1,35 @@
-Under each and every passage of code, I will explain what approach had I chosen for the performance of the analysis. First, I started with an analysis over the provided data. With this step, I would determine the activity of the different individuals.To make that happen, I used the packages “caret” and “randomForest”. This way I was able to calculate the separate answers of each one of the 20 test data cases provided.
-library(Hmisc) library(caret) library(randomForest) library(foreach) library(doParallel) set.seed(2048) options(warn=-1)
+
+library(Hmisc)
+library(caret)
+library(randomForest)
+library(foreach)
+library(doParallel)
+
+set.seed(2048)
+options(warn=-1)
 
 setwd(“D:\viktor\uni\practical machine learning”)
 
-I started with the process of loading the training and testingdata from the csv’s, provided on the Assignment page.
-training_data <- read.csv(“pml-training.csv”, na.strings=c(“#DIV/0!”) ) evaluation_data <- read.csv(“pml-testing.csv”, na.strings=c(“#DIV/0!”) )
+training_data <- read.csv(“pml-training.csv”, na.strings=c(“#DIV/0!”) ) 
+evaluation_data <- read.csv(“pml-testing.csv”, na.strings=c(“#DIV/0!”) )
 
-An important step was to set all columns in the data sets (8) to be numeric.
-for(i in c(8:ncol(training_data)-1)) {training_data[,i] = as.numeric(as.character(training_data[,i]))} for(i in c(8:ncol(evaluation_data)-1)) {evaluation_data[,i] = as.numeric(as.character(evaluation_data[,i]))}
+for(i in c(8:ncol(training_data)-1)) {training_data[,i] = as.numeric(as.character(training_data[,i]))} 
+for(i in c(8:ncol(evaluation_data)-1)) {evaluation_data[,i] = as.numeric(as.character(evaluation_data[,i]))}
 
-As it was stated in the video lectures, if there are blank colums, then this can have a negative impact on the prediction results. That is why I included only complete columns. It is not necessary to remove inputs such as user name, windows and etc, but I preffered to do it.
-feature_set <- colnames(training_data[colSums(is.na(training_data)) == 0])[-(1:7)] model_data <- training_data[feature_set] feature_set
+feature_set <- colnames(training_data[colSums(is.na(training_data)) == 0])[-(1:7)] 
+model_data <- training_data[feature_set] feature_set
 
-idx <- createDataPartition(y=model_data$classe, p=0.75, list=FALSE ) training <- model_data[idx,] testing <- model_data[-idx,]
+idx <- createDataPartition(y=model_data$classe, p=0.75, list=FALSE ) 
+training <- model_data[idx,] testing <- model_data[-idx,]
 
-The next step is to build different random forest scenarios. What I did is to perform 5 random forests with 300 trees each. NOTE that the more trees you construct, the more accurate results you get. I decided to construct 300 trees before of the processing time that is needed for broader analysis. Nevertheless, the results I got are completely accurate and clearly show how effective the predictive model is.
 registerDoParallel() x <- training[-ncol(training)] y <- training$classe
 
 rf <- foreach(ntree=rep(300, 6), .combine=randomForest::combine, .packages=‘randomForest’) %dopar% { randomForest(x, y, ntree=ntree) }
 
-Finally, I generate reports for the training and the test data via the “classe” variable.
 predictions1 <- predict(rf, newdata=training) confusionMatrix(predictions1,training$classe)
 
 predictions2 <- predict(rf, newdata=testing) confusionMatrix(predictions2,testing$classe)
 
-Conclusion:
-The RandomForest model is the most complete model that I had tested over this case. As it can be clearly seen, the test results are correct and expose the accurate construction of the model.
 pml_write_files = function(x){ n = length(x) for(i in 1:n){ filename = paste0(“problem_id_”,i,“.txt”) write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE) } }
 
 x <- evaluation_data x <- x[feature_set[feature_set!=‘classe’]] answers <- predict(rf, newdata=x)
